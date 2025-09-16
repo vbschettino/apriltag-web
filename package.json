@@ -1,0 +1,13 @@
+{
+  "name": "apriltag-web",
+  "version": "1.0.0",
+  "description": "Web application for AprilTag detection and relative pose calculation",
+  "main": "app.js",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000"
+  },
+  "keywords": ["apriltag", "computer-vision", "pose-estimation", "web"],
+  "author": "",
+  "license": "MIT"
+}
