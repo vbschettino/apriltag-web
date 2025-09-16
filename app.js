@@ -34,6 +34,7 @@ class AprilTagWebApp {
     initializeEventListeners() {
         document.getElementById('startCamera').addEventListener('click', () => this.startCamera());
         document.getElementById('stopCamera').addEventListener('click', () => this.stopCamera());
+        document.getElementById('demoMode').addEventListener('click', () => this.startDemoMode());
         
         // Update detector parameters when settings change
         document.getElementById('tagFamily').addEventListener('change', () => this.updateDetectorParameters());
@@ -103,6 +104,124 @@ class AprilTagWebApp {
         }
     }
 
+    startDemoMode() {
+        // Create a demo video feed with simulated AprilTags
+        this.createDemoCanvas();
+        
+        document.getElementById('startCamera').disabled = true;
+        document.getElementById('stopCamera').disabled = false;
+        
+        this.updateStatus('Demo mode started - simulated detection active');
+        
+        // Start detection loop with demo data
+        this.detectionActive = true;
+        this.detectTags();
+    }
+
+    createDemoCanvas() {
+        // Create a demo video element with simulated content
+        const demoCanvas = document.createElement('canvas');
+        demoCanvas.width = 640;
+        demoCanvas.height = 480;
+        
+        // Replace video with demo canvas
+        this.video.style.display = 'none';
+        this.video.parentNode.insertBefore(demoCanvas, this.video);
+        
+        this.demoCanvas = demoCanvas;
+        this.demoCtx = demoCanvas.getContext('2d');
+        
+        // Set up demo canvas to look like video
+        demoCanvas.style.border = this.video.style.border;
+        demoCanvas.style.borderRadius = this.video.style.borderRadius;
+        demoCanvas.style.maxWidth = this.video.style.maxWidth;
+        
+        // Update canvas overlay size
+        this.canvas.width = 640;
+        this.canvas.height = 480;
+        this.canvas.style.width = demoCanvas.offsetWidth + 'px';
+        this.canvas.style.height = demoCanvas.offsetHeight + 'px';
+        
+        // Update camera parameters for demo
+        this.cameraMatrix.fx = 640 * 0.8;
+        this.cameraMatrix.fy = 640 * 0.8;
+        this.cameraMatrix.cx = 320;
+        this.cameraMatrix.cy = 240;
+        
+        // Start demo animation
+        this.animateDemoScene();
+    }
+
+    animateDemoScene() {
+        if (!this.detectionActive) return;
+        
+        const ctx = this.demoCtx;
+        const time = Date.now() / 1000;
+        
+        // Clear canvas with gray background
+        ctx.fillStyle = '#e0e0e0';
+        ctx.fillRect(0, 0, 640, 480);
+        
+        // Draw simulated AprilTags
+        const tag1X = 200 + Math.sin(time * 0.5) * 50;
+        const tag1Y = 200 + Math.cos(time * 0.3) * 30;
+        const tag1Rotation = time * 0.2;
+        
+        const tag2X = 450 + Math.sin(time * 0.7) * 40;
+        const tag2Y = 280 + Math.cos(time * 0.4) * 40;
+        const tag2Rotation = -time * 0.15;
+        
+        this.drawDemoTag(ctx, tag1X, tag1Y, 80, tag1Rotation, 0);
+        this.drawDemoTag(ctx, tag2X, tag2Y, 70, tag2Rotation, 1);
+        
+        // Continue animation
+        requestAnimationFrame(() => this.animateDemoScene());
+    }
+
+    drawDemoTag(ctx, centerX, centerY, size, rotation, id) {
+        ctx.save();
+        
+        // Translate and rotate
+        ctx.translate(centerX, centerY);
+        ctx.rotate(rotation);
+        
+        const halfSize = size / 2;
+        
+        // Draw white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(-halfSize, -halfSize, size, size);
+        
+        // Draw black border
+        ctx.fillStyle = 'black';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(-halfSize, -halfSize, size, size);
+        
+        // Draw inner white area
+        const innerSize = size * 0.7;
+        const innerHalf = innerSize / 2;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(-innerHalf, -innerHalf, innerSize, innerSize);
+        
+        // Draw simple pattern based on ID
+        ctx.fillStyle = 'black';
+        const cellSize = innerSize / 6;
+        
+        if (id === 0) {
+            // Pattern for ID 0
+            ctx.fillRect(-innerHalf + cellSize, -innerHalf + cellSize, cellSize, cellSize);
+            ctx.fillRect(-innerHalf + 3*cellSize, -innerHalf + cellSize, cellSize, cellSize);
+            ctx.fillRect(-innerHalf + cellSize, -innerHalf + 3*cellSize, cellSize, cellSize);
+            ctx.fillRect(-innerHalf + 4*cellSize, -innerHalf + 3*cellSize, cellSize, cellSize);
+        } else if (id === 1) {
+            // Pattern for ID 1
+            ctx.fillRect(-innerHalf + 2*cellSize, -innerHalf + cellSize, cellSize, cellSize);
+            ctx.fillRect(-innerHalf + 4*cellSize, -innerHalf + cellSize, cellSize, cellSize);
+            ctx.fillRect(-innerHalf + cellSize, -innerHalf + 2*cellSize, cellSize, cellSize);
+            ctx.fillRect(-innerHalf + 4*cellSize, -innerHalf + 3*cellSize, cellSize, cellSize);
+        }
+        
+        ctx.restore();
+    }
     stopCamera() {
         this.detectionActive = false;
         
@@ -113,6 +232,14 @@ class AprilTagWebApp {
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
             this.stream = null;
+        }
+        
+        // Clean up demo mode if active
+        if (this.demoCanvas) {
+            this.demoCanvas.remove();
+            this.demoCanvas = null;
+            this.demoCtx = null;
+            this.video.style.display = 'block';
         }
         
         this.video.srcObject = null;
@@ -133,11 +260,17 @@ class AprilTagWebApp {
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             
-            tempCanvas.width = this.video.videoWidth;
-            tempCanvas.height = this.video.videoHeight;
-            
-            // Draw current video frame
-            tempCtx.drawImage(this.video, 0, 0, tempCanvas.width, tempCanvas.height);
+            if (this.demoCanvas) {
+                // Use demo canvas data
+                tempCanvas.width = this.demoCanvas.width;
+                tempCanvas.height = this.demoCanvas.height;
+                tempCtx.drawImage(this.demoCanvas, 0, 0);
+            } else {
+                // Use video data
+                tempCanvas.width = this.video.videoWidth;
+                tempCanvas.height = this.video.videoHeight;
+                tempCtx.drawImage(this.video, 0, 0, tempCanvas.width, tempCanvas.height);
+            }
             
             // Get image data for AprilTag detection
             const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
@@ -163,6 +296,11 @@ class AprilTagWebApp {
         try {
             // Update detector parameters
             this.updateDetectorParameters();
+            
+            // Use demo detection if in demo mode
+            if (this.demoCanvas) {
+                return this.detector.detectDemo(imageData);
+            }
             
             // Perform actual detection
             return this.detector.detect(imageData);
@@ -294,24 +432,112 @@ class AprilTagWebApp {
         }
         
         // Calculate relative transformation from tag1 to tag2
-        const relativeTranslation = this.subtractVectors(tag2.pose.translation, tag1.pose.translation);
-        const relativeRotation = this.subtractVectors(tag2.pose.rotation, tag1.pose.rotation);
+        const relativePose = this.computeRelativeTransformation(tag1.pose, tag2.pose);
         
         // Calculate distance
-        const distance = Math.sqrt(
-            relativeTranslation[0] ** 2 + 
-            relativeTranslation[1] ** 2 + 
-            relativeTranslation[2] ** 2
-        );
+        const translation = relativePose.translation;
+        const distance = Math.sqrt(translation[0] ** 2 + translation[1] ** 2 + translation[2] ** 2);
+        
+        // Convert rotation from matrix to Euler angles for display
+        const eulerAngles = this.rotationMatrixToEuler(relativePose.rotationMatrix);
         
         // Update UI
         document.getElementById('relativeDistance').textContent = `${distance.toFixed(3)} m`;
         document.getElementById('relativeTranslation').textContent = 
-            `x: ${relativeTranslation[0].toFixed(3)}, y: ${relativeTranslation[1].toFixed(3)}, z: ${relativeTranslation[2].toFixed(3)}`;
+            `x: ${translation[0].toFixed(3)}, y: ${translation[1].toFixed(3)}, z: ${translation[2].toFixed(3)}`;
         document.getElementById('relativeRotation').textContent = 
-            `rx: ${(relativeRotation[0] * 180 / Math.PI).toFixed(1)}°, ry: ${(relativeRotation[1] * 180 / Math.PI).toFixed(1)}°, rz: ${(relativeRotation[2] * 180 / Math.PI).toFixed(1)}°`;
+            `rx: ${(eulerAngles[0] * 180 / Math.PI).toFixed(1)}°, ry: ${(eulerAngles[1] * 180 / Math.PI).toFixed(1)}°, rz: ${(eulerAngles[2] * 180 / Math.PI).toFixed(1)}°`;
         
         relativePoseDiv.style.display = 'block';
+    }
+
+    computeRelativeTransformation(pose1, pose2) {
+        // Convert Euler angles to rotation matrices
+        const R1 = this.eulerToRotationMatrix(pose1.rotation);
+        const R2 = this.eulerToRotationMatrix(pose2.rotation);
+        
+        // Extract translation vectors
+        const t1 = pose1.translation;
+        const t2 = pose2.translation;
+        
+        // Compute relative rotation: R_rel = R2 * R1^T
+        const R1_transpose = this.transposeMatrix(R1);
+        const R_relative = this.multiplyMatrices(R2, R1_transpose);
+        
+        // Compute relative translation: t_rel = R1^T * (t2 - t1)
+        const t_diff = this.subtractVectors(t2, t1);
+        const t_relative = this.multiplyMatrixVector(R1_transpose, t_diff);
+        
+        return {
+            translation: t_relative,
+            rotationMatrix: R_relative
+        };
+    }
+
+    eulerToRotationMatrix(euler) {
+        // Convert Euler angles (rx, ry, rz) to rotation matrix
+        const [rx, ry, rz] = euler;
+        
+        const cos_x = Math.cos(rx), sin_x = Math.sin(rx);
+        const cos_y = Math.cos(ry), sin_y = Math.sin(ry);
+        const cos_z = Math.cos(rz), sin_z = Math.sin(rz);
+        
+        // ZYX rotation order
+        return [
+            [cos_y * cos_z, -cos_y * sin_z, sin_y],
+            [cos_x * sin_z + sin_x * sin_y * cos_z, cos_x * cos_z - sin_x * sin_y * sin_z, -sin_x * cos_y],
+            [sin_x * sin_z - cos_x * sin_y * cos_z, sin_x * cos_z + cos_x * sin_y * sin_z, cos_x * cos_y]
+        ];
+    }
+
+    rotationMatrixToEuler(R) {
+        // Convert rotation matrix to Euler angles (ZYX order)
+        const sy = Math.sqrt(R[0][0] * R[0][0] + R[1][0] * R[1][0]);
+        
+        const singular = sy < 1e-6;
+        
+        let x, y, z;
+        if (!singular) {
+            x = Math.atan2(R[2][1], R[2][2]);
+            y = Math.atan2(-R[2][0], sy);
+            z = Math.atan2(R[1][0], R[0][0]);
+        } else {
+            x = Math.atan2(-R[1][2], R[1][1]);
+            y = Math.atan2(-R[2][0], sy);
+            z = 0;
+        }
+        
+        return [x, y, z];
+    }
+
+    transposeMatrix(matrix) {
+        return [
+            [matrix[0][0], matrix[1][0], matrix[2][0]],
+            [matrix[0][1], matrix[1][1], matrix[2][1]],
+            [matrix[0][2], matrix[1][2], matrix[2][2]]
+        ];
+    }
+
+    multiplyMatrices(A, B) {
+        const result = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+        
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                for (let k = 0; k < 3; k++) {
+                    result[i][j] += A[i][k] * B[k][j];
+                }
+            }
+        }
+        
+        return result;
+    }
+
+    multiplyMatrixVector(matrix, vector) {
+        return [
+            matrix[0][0] * vector[0] + matrix[0][1] * vector[1] + matrix[0][2] * vector[2],
+            matrix[1][0] * vector[0] + matrix[1][1] * vector[1] + matrix[1][2] * vector[2],
+            matrix[2][0] * vector[0] + matrix[2][1] * vector[1] + matrix[2][2] * vector[2]
+        ];
     }
 
     subtractVectors(v1, v2) {

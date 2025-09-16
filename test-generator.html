@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AprilTag Test Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .tag {
+            display: inline-block;
+            margin: 20px;
+            border: 2px solid #333;
+        }
+        canvas {
+            border: 1px solid #ccc;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AprilTag Test Images</h1>
+        <p>Use these test images to test the AprilTag detection system.</p>
+        
+        <button onclick="generateTag(0, 'tag0')">Generate Tag ID 0</button>
+        <button onclick="generateTag(1, 'tag1')">Generate Tag ID 1</button>
+        <button onclick="generateTestPattern()">Generate Test Pattern</button>
+        
+        <div id="tags"></div>
+        
+        <canvas id="testPattern" width="640" height="480" style="display: none;"></canvas>
+    </div>
+
+    <script>
+        function generateTag(id, elementId) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200;
+            canvas.height = 200;
+            canvas.id = elementId;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 200, 200);
+            
+            // Draw black border
+            ctx.fillStyle = 'black';
+            ctx.fillRect(20, 20, 160, 160);
+            
+            // Draw white inner border
+            ctx.fillStyle = 'white';
+            ctx.fillRect(40, 40, 120, 120);
+            
+            // Draw simple pattern based on ID
+            ctx.fillStyle = 'black';
+            
+            // Simple patterns for different IDs
+            if (id === 0) {
+                // Pattern for ID 0
+                ctx.fillRect(60, 60, 20, 20);
+                ctx.fillRect(100, 60, 20, 20);
+                ctx.fillRect(60, 100, 20, 20);
+                ctx.fillRect(140, 100, 20, 20);
+                ctx.fillRect(100, 140, 20, 20);
+            } else if (id === 1) {
+                // Pattern for ID 1
+                ctx.fillRect(80, 60, 20, 20);
+                ctx.fillRect(120, 60, 20, 20);
+                ctx.fillRect(60, 80, 20, 20);
+                ctx.fillRect(120, 100, 20, 20);
+                ctx.fillRect(80, 140, 20, 20);
+            }
+            
+            // Add ID label
+            ctx.fillStyle = 'red';
+            ctx.font = '16px Arial';
+            ctx.fillText(`ID: ${id}`, 10, 15);
+            
+            // Add to page
+            const tagsDiv = document.getElementById('tags');
+            const tagDiv = document.createElement('div');
+            tagDiv.className = 'tag';
+            tagDiv.innerHTML = `<h3>Tag ${id}</h3>`;
+            tagDiv.appendChild(canvas);
+            tagsDiv.appendChild(tagDiv);
+        }
+        
+        function generateTestPattern() {
+            const canvas = document.getElementById('testPattern');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, 640, 480);
+            
+            // Draw two tags at different positions and orientations
+            drawTestTag(ctx, 150, 150, 80, 0, 0);  // Tag 0 at top-left
+            drawTestTag(ctx, 450, 300, 80, Math.PI/6, 1);  // Tag 1 at bottom-right, rotated
+            
+            canvas.style.display = 'block';
+            
+            // Add download link
+            const link = document.createElement('a');
+            link.download = 'apriltag-test-pattern.png';
+            link.href = canvas.toDataURL();
+            link.textContent = 'Download Test Pattern';
+            link.style.display = 'block';
+            link.style.marginTop = '10px';
+            document.getElementById('tags').appendChild(link);
+        }
+        
+        function drawTestTag(ctx, centerX, centerY, size, rotation, id) {
+            ctx.save();
+            
+            // Translate and rotate
+            ctx.translate(centerX, centerY);
+            ctx.rotate(rotation);
+            
+            const halfSize = size / 2;
+            
+            // Draw white background
+            ctx.fillStyle = 'white';
+            ctx.fillRect(-halfSize, -halfSize, size, size);
+            
+            // Draw black border
+            ctx.fillStyle = 'black';
+            ctx.fillRect(-halfSize, -halfSize, size, size);
+            
+            // Draw white inner area
+            const innerSize = size * 0.8;
+            const innerHalf = innerSize / 2;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(-innerHalf, -innerHalf, innerSize, innerSize);
+            
+            // Draw pattern based on ID
+            ctx.fillStyle = 'black';
+            const cellSize = innerSize / 6;
+            
+            if (id === 0) {
+                // Simple pattern for ID 0
+                ctx.fillRect(-innerHalf + cellSize, -innerHalf + cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + 3*cellSize, -innerHalf + cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + cellSize, -innerHalf + 3*cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + 4*cellSize, -innerHalf + 3*cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + 3*cellSize, -innerHalf + 4*cellSize, cellSize, cellSize);
+            } else if (id === 1) {
+                // Simple pattern for ID 1
+                ctx.fillRect(-innerHalf + 2*cellSize, -innerHalf + cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + 4*cellSize, -innerHalf + cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + cellSize, -innerHalf + 2*cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + 4*cellSize, -innerHalf + 3*cellSize, cellSize, cellSize);
+                ctx.fillRect(-innerHalf + 2*cellSize, -innerHalf + 4*cellSize, cellSize, cellSize);
+            }
+            
+            ctx.restore();
+        }
+    </script>
+</body>
+</html>
